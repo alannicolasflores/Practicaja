@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.practicaja.beans.Cuenta;
+import com.practicaja.beans.Movimiento;
 import com.practicaja.services.PracticajaServices;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -33,7 +34,7 @@ public class PracticajaController {
 			String respuesta = "Holaaa " + nombre.getNombre() + nombre.getaPaterno();
 			return new ResponseEntity(respuesta, HttpStatus.OK);
 		} catch (Exception e) {
-			return new ResponseEntity("No existe sesion", HttpStatus.OK);
+			return new ResponseEntity("No existe sesion", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 		
 	}
@@ -57,13 +58,56 @@ public class PracticajaController {
 	public ResponseEntity retirar(@RequestParam double montoRetiro, HttpServletRequest request)
 	{		
 		double saldoFinal = 0;
+		Cuenta datosCuenta = null;
 		try {
 			sesion = request.getSession();
-			saldoFinal = pc.retirar(montoRetiro,(Cuenta) sesion.getAttribute("datosCuenta"));
-			sesion.setAttribute("saldoFinal", saldoFinal);
-			return new ResponseEntity(saldoFinal, HttpStatus.OK);
+			datosCuenta = (Cuenta) sesion.getAttribute("datosCuenta");
+			if(datosCuenta != null)
+			{
+				saldoFinal = pc.retirar(montoRetiro,datosCuenta);
+				sesion.setAttribute("saldoFinal", saldoFinal);
+				return new ResponseEntity(saldoFinal, HttpStatus.OK);
+			}
+			else{
+				return new ResponseEntity("No existe sesión", HttpStatus.INTERNAL_SERVER_ERROR);
+			}
+			
 		} catch (Exception e) {
-			return new ResponseEntity(e, HttpStatus.OK);
+			return new ResponseEntity(e, HttpStatus.INTERNAL_SERVER_ERROR);
+		}		
+	}
+
+	@RequestMapping(value = "/consultaCuentaDestino", method = RequestMethod.GET)
+	public ResponseEntity consultaCuentaDestino(@RequestParam String noTarjetaCuenta,HttpServletRequest request)
+	{		
+		Cuenta cuentaDestino = null;
+		try {
+			sesion = request.getSession();
+			cuentaDestino = pc.consultaCuentaDestino(noTarjetaCuenta);
+			sesion.setAttribute("cuentaDestino", cuentaDestino);
+			return new ResponseEntity(cuentaDestino, HttpStatus.OK);
+		} catch (Exception e) {
+			return new ResponseEntity(e, HttpStatus.INTERNAL_SERVER_ERROR);
+		}		
+	}
+
+	@RequestMapping(value = "/depositar", method = RequestMethod.POST)
+	public ResponseEntity depositar(@RequestParam double montoDeposito,HttpServletRequest request)
+	{		
+		Movimiento movimiento = null;
+		Cuenta cuentaDestino = null;
+		try {
+			sesion = request.getSession();
+			cuentaDestino = (Cuenta) sesion.getAttribute("cuentaDestino");
+			if(cuentaDestino != null){
+				movimiento = pc.depositar(montoDeposito, cuentaDestino);			
+				return new ResponseEntity(movimiento, HttpStatus.OK);
+			}else{
+				return new ResponseEntity("No existe sesión", HttpStatus.INTERNAL_SERVER_ERROR);
+			}
+			
+		} catch (Exception e) {
+			return new ResponseEntity(e, HttpStatus.INTERNAL_SERVER_ERROR);
 		}		
 	}
 }
